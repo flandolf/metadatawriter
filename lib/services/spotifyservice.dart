@@ -21,6 +21,9 @@ Future<dynamic> searchMultipleTracks(
       Uri.parse("https://api.spotify.com/v1/search?q=$query&type=track"),
       headers: {"Authorization": "Bearer $token"});
   var json = jsonDecode(response.body);
+  if (response == 400) {
+    return null;
+  }
   List<dynamic> tracks = [];
   for (int i = 0; i < amount; i++) {
     tracks.add({
