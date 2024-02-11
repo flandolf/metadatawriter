@@ -1,10 +1,12 @@
-import 'dart:typed_data';
-
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:metadata_god/metadata_god.dart';
 import 'package:metadatawriter/services/spotifyservice.dart';
 import 'package:http/http.dart' as http;
+import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import '../providers/clientprovider.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -19,14 +21,40 @@ class _HomeScreenState extends State<HomeScreen> {
   String spotifyApiKey = "";
   dynamic spotifyMetadata;
   List<dynamic> avaliableTracks = [];
+  final TextEditingController clientIdController = TextEditingController();
+  final TextEditingController clientSecretController = TextEditingController();
   @override
   void initState() {
     super.initState();
-    getApiKey().then((value) {
-      setState(() {
-        spotifyApiKey = value;
+    _load();
+    clientIdController.text = context.read<ClientCredentialsProvider>().clientId;
+    clientSecretController.text = context.read<ClientCredentialsProvider>().clientSecret;
+    if (context.read<ClientCredentialsProvider>().clientId.isNotEmpty &&
+        context.read<ClientCredentialsProvider>().clientSecret.isNotEmpty) {
+      getApiKey(
+              context.read<ClientCredentialsProvider>().clientId,
+              context.read<ClientCredentialsProvider>().clientSecret)
+          .then((value) {
+        setState(() {
+          spotifyApiKey = value;
+        });
       });
-    });
+    }
+  }
+  void _save() async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    if (!context.mounted) return;
+    prefs.setString('client_id', context.read<ClientCredentialsProvider>().clientId);
+    prefs.setString('client_secret', context.read<ClientCredentialsProvider>().clientSecret);
+    print(prefs.getString('client_id'));
+    print(prefs.getString('client_secret'));
+  }
+
+  void _load() async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    if (!context.mounted) return;
+    context.read<ClientCredentialsProvider>().setClientId(prefs.getString('client_id') ?? "");
+    context.read<ClientCredentialsProvider>().setClientSecret(prefs.getString('client_secret') ?? "");
   }
 
   Future<void> _openFileExplorer() async {
@@ -59,16 +87,24 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _getSpotifyMetadata() async {
-    if (spotifyApiKey.isEmpty) {
-      getApiKey().then((value) {
+    if (context.read<ClientCredentialsProvider>().clientId.isEmpty ||
+        context.read<ClientCredentialsProvider>().clientSecret.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Please set Spotify API credentials!")));
+      return;
+    } else if (filePath.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Please select a file first!")));
+      return;
+    } else if (spotifyApiKey.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Spotify API key not found, obtaining...")));
+      await getApiKey(context.read<ClientCredentialsProvider>().clientId, context.read<ClientCredentialsProvider>().clientSecret)
+          .then((value) {
         setState(() {
           spotifyApiKey = value;
         });
       });
-    } else if (filePath.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Please select a file first")));
-      return;
     }
     String title = currentMetadata.title ?? "";
     String artist = currentMetadata.artist ?? "";
@@ -110,13 +146,57 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
         appBar: AppBar(
           title: const Text("Metadata Writer"),
-          actions: [IconButton(onPressed: () {}, icon: Icon(Icons.settings))],
+          actions: [IconButton(onPressed: () {
+            showDialog(context: context, builder: (context){
+              return AlertDialog(
+                title: const Text("Set Spotify API Credentials"),
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    TextField(
+                      controller: clientIdController,
+                      decoration: const InputDecoration(labelText: "Client ID"),
+                      onChanged: (value) {
+                        context.read<ClientCredentialsProvider>().setClientId(value);
+                        _save();
+                        setState(() {
+
+                        });
+                      },
+                    ),
+                    TextField(
+                      controller: clientSecretController,
+                      decoration: const InputDecoration(labelText: "Client Secret"),
+                      onChanged: (value) {
+                        context.read<ClientCredentialsProvider>().setClientSecret(value);
+                        _save();
+                        setState(() {
+
+                        });
+                      },
+                    ),
+                  ],
+                ),
+                actions: <Widget>[
+                  TextButton(onPressed: () {
+                    Navigator.of(context).pop();
+                  }, child: const Text("Close"))
+                ],
+              );
+            });
+          }, icon: Icon(Icons.settings))],
         ),
         body: Padding(
             padding: const EdgeInsets.only(left: 16, right: 16),
             child: Column(
               mainAxisSize: MainAxisSize.max,
               children: <Widget>[
+                Text(
+                  "Client ID: ${context.read<ClientCredentialsProvider>().clientId}",
+                ),
+                Text(
+                  "Client Secret: ${context.read<ClientCredentialsProvider>().clientSecret}",
+                ),
                 Card(
                   child: ListTile(
                     title: Text(currentMetadata.title ?? "No Title"),

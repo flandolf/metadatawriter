@@ -2,10 +2,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
-String client_id = "686a7f6dc7e94ebea052bcb2ef3d5c59";
-String client_secret = "b32651e632cc4dff87ca7d480b876633";
-
-Future<String> getApiKey() async {
+Future<String> getApiKey(String client_id, String client_secret) async {
   final response = await http.post(
       Uri.parse(
           "https://accounts.spotify.com/api/token?grant_type=client_credentials"),
@@ -40,10 +37,4 @@ Future<dynamic> searchMultipleTracks(
     });
   }
   return tracks;
-}
-
-void main() {
-  getApiKey().then((value) {
-    print(value);
-  });
 }

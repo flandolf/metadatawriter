@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:metadata_god/metadata_god.dart';
+import 'package:metadatawriter/providers/clientprovider.dart';
 import 'package:metadatawriter/screens/home.dart';
+import 'package:provider/provider.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   MetadataGod.initialize();
-  runApp(const MainApp());
+  runApp(ChangeNotifierProvider(create: (context) => ClientCredentialsProvider(), child: MainApp()));
 }
 
 class MainApp extends StatefulWidget {
