@@ -2,13 +2,13 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
-Future<String> getApiKey(String client_id, String client_secret) async {
+Future<String> getApiKey(String clientId, String clientSecret) async {
   final response = await http.post(
       Uri.parse(
           "https://accounts.spotify.com/api/token?grant_type=client_credentials"),
       headers: {
         "Authorization":
-            "Basic ${const Base64Encoder().convert(utf8.encode("$client_id:$client_secret"))}",
+            "Basic ${const Base64Encoder().convert(utf8.encode("$clientId:$clientSecret"))}",
         "Content-Type": "application/x-www-form-urlencoded",
       });
   var json = jsonDecode(response.body);
@@ -21,7 +21,7 @@ Future<dynamic> searchMultipleTracks(
       Uri.parse("https://api.spotify.com/v1/search?q=$query&type=track"),
       headers: {"Authorization": "Bearer $token"});
   var json = jsonDecode(response.body);
-  if (response == 400) {
+  if (response.statusCode == 400) {
     return null;
   }
   List<dynamic> tracks = [];

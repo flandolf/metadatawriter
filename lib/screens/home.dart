@@ -1,8 +1,7 @@
 import 'dart:typed_data';
-
-import 'package:audiotags/audiotags.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_taggy/flutter_taggy.dart';
 import 'package:metadatawriter/services/spotifyservice.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
@@ -19,9 +18,10 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   String filePath = "";
-  Tag? tag;
   String spotifyApiKey = "";
   dynamic spotifyMetadata;
+  TaggyFile? taggyFile;
+  Tag? tag;
   List<dynamic> avaliableTracks = [];
   final TextEditingController clientIdController = TextEditingController();
   final TextEditingController clientSecretController = TextEditingController();
@@ -55,8 +55,6 @@ class _HomeScreenState extends State<HomeScreen> {
         'client_id', context.read<ClientCredentialsProvider>().clientId);
     prefs.setString('client_secret',
         context.read<ClientCredentialsProvider>().clientSecret);
-    print(prefs.getString('client_id'));
-    print(prefs.getString('client_secret'));
   }
 
   void _load() async {
@@ -82,14 +80,12 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _readMetadata() async {
     try {
-      tag = await AudioTags.read(filePath);
-    } catch (e) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text("Error reading metadata / no metadata found!")));
+      taggyFile = await Taggy.readPrimary(filePath);
       setState(() {
-        tag = null;
+        tag = taggyFile?.firstTagIfAny;
       });
+    } catch (error) {
+      _showSnackBar("Error: $error");
     }
   }
 
@@ -118,7 +114,8 @@ class _HomeScreenState extends State<HomeScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Please select a file first!")));
       return;
-    } else if (tag?.title == "No Title" || tag?.trackArtist == "No Artist") {
+    } else if (tag?.trackTitle == "No Title" ||
+        tag?.trackArtist == "No Artist") {
       final TextEditingController titleController = TextEditingController();
       final TextEditingController artistController = TextEditingController();
       await showDialog(
@@ -161,9 +158,8 @@ class _HomeScreenState extends State<HomeScreen> {
         });
       });
     }
-    print(spotifyApiKey);
     if (title.isEmpty) {
-      title = tag?.title ?? "";
+      title = tag?.trackTitle ?? "";
     }
     if (artist.isEmpty) {
       artist = tag?.trackArtist ?? "";
@@ -181,28 +177,23 @@ class _HomeScreenState extends State<HomeScreen> {
       try {
         var pictureResponse =
             await http.get(Uri.parse(spotifyMetadata["image"]));
-        print(spotifyMetadata["image"]);
         if (pictureResponse.statusCode != 200) {
           throw Exception(
               "Failed to fetch image. Status code: ${pictureResponse.statusCode}");
         }
 
         Uint8List imageBytes = pictureResponse.bodyBytes;
-
         Tag newTag = Tag(
-            pictures: [
-              Picture(
-                  pictureType: PictureType.coverFront,
-                  mimeType: MimeType.jpeg,
-                  bytes: imageBytes)
-            ],
-            title: spotifyMetadata["name"],
-            trackArtist: spotifyMetadata["artist"],
-            album: spotifyMetadata["album"],
-            year: spotifyMetadata["year"],
-            trackNumber: spotifyMetadata["trackNumber"],
-            genre: tag?.genre);
-        await AudioTags.write(filePath, newTag);
+          tagType: tag!.tagType,
+          trackTitle: spotifyMetadata["name"],
+          trackArtist: spotifyMetadata["artist"],
+          album: spotifyMetadata["album"],
+          year: spotifyMetadata["year"],
+          pictures: [Picture(picType: PictureType.Icon, picData: imageBytes)],
+        );
+
+        await Taggy.writePrimary(
+            path: filePath, tag: newTag, keepOthers: false);
 
         if (!_metadataEquals(newTag, spotifyMetadata)) {
           _showSnackBar("Error writing metadata!");
@@ -219,7 +210,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   bool _metadataEquals(Tag metadata, Map<String, dynamic> spotifyMetadata) {
-    return metadata.title == spotifyMetadata["name"] &&
+    return metadata.trackTitle == spotifyMetadata["name"] &&
         metadata.trackArtist == spotifyMetadata["artist"] &&
         metadata.album == spotifyMetadata["album"] &&
         metadata.year == spotifyMetadata["year"];
@@ -319,15 +310,15 @@ class _HomeScreenState extends State<HomeScreen> {
                                     content: Text("API Key refreshed!")));
                           });
                         },
-                        icon: Icon(Icons.refresh))
+                        icon: const Icon(Icons.refresh))
                   ],
                 ),
                 Card(
                   child: ListTile(
                     leading: tag?.pictures[0] != null
-                        ? Image.memory(tag!.pictures[0].bytes)
+                        ? Image.memory(tag!.pictures[0].picData)
                         : const Icon(Icons.music_note),
-                    title: Text(tag?.title ?? "No Title"),
+                    title: Text(tag?.trackTitle ?? "No Title"),
                     subtitle: Text("${tag?.trackArtist ?? "No Artist"} - "
                         "${tag?.album ?? "No Album"}"),
                     trailing: FilledButton(
@@ -351,14 +342,14 @@ class _HomeScreenState extends State<HomeScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: <Widget>[
                       TextField(
-                        decoration: InputDecoration(hintText: "Title"),
+                        decoration: const InputDecoration(hintText: "Title"),
                         controller: titleController,
                       ),
                       TextField(
-                        decoration: InputDecoration(hintText: "Artist"),
+                        decoration: const InputDecoration(hintText: "Artist"),
                         controller: artistController,
                       ),
-                      SizedBox(
+                      const SizedBox(
                         height: 16,
                       ),
                       FilledButton(
@@ -367,7 +358,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 artist: artistController.text,
                                 title: titleController.text);
                           },
-                          child: Text("Search"))
+                          child: const Text("Search"))
                     ],
                   )),
                 ),

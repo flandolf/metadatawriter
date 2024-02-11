@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_taggy/flutter_taggy.dart';
 import 'package:metadatawriter/providers/clientprovider.dart';
 import 'package:metadatawriter/screens/home.dart';
 import 'package:provider/provider.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+  Taggy.initialize();
   runApp(ChangeNotifierProvider(
       create: (context) => ClientCredentialsProvider(),
       child: const MainApp()));
