@@ -68,17 +68,17 @@ class _HomeScreenState extends State<HomeScreen> {
         .setClientSecret(prefs.getString('client_secret') ?? "");
   }
 
-  Future<void> _openFileExplorer() async {
+  void _openFileExplorer() async {
     FilePickerResult? result = await FilePicker.platform.pickFiles();
     if (result != null) {
       setState(() {
         filePath = result.files.single.path!;
       });
-      await _readMetadata();
+      _readMetadata();
     }
   }
 
-  Future<void> _readMetadata() async {
+  void _readMetadata() async {
     try {
       taggyFile = await Taggy.readPrimary(filePath);
       setState(() {
@@ -101,7 +101,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return "${(bytes / 1024 / 10).toStringAsFixed(2)} MB";
   }
 
-  Future<void> _getSpotifyMetadata({
+  void _getSpotifyMetadata({
     String title = "",
     String artist = "",
   }) async {
@@ -172,7 +172,7 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  Future<void> _writeSpotifyMetadataToFile() async {
+  void _writeSpotifyMetadataToFile() async {
     if (spotifyMetadata != null) {
       try {
         var pictureResponse =
@@ -315,9 +315,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 Card(
                   child: ListTile(
-                    leading: tag?.pictures[0] != null
-                        ? Image.memory(tag!.pictures[0].picData)
-                        : const Icon(Icons.music_note),
+                    leading: const Icon(Icons.music_note),
                     title: Text(tag?.trackTitle ?? "No Title"),
                     subtitle: Text("${tag?.trackArtist ?? "No Artist"} - "
                         "${tag?.album ?? "No Album"}"),
@@ -362,27 +360,31 @@ class _HomeScreenState extends State<HomeScreen> {
                     ],
                   )),
                 ),
-                ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: avaliableTracks.length,
-                  itemBuilder: (BuildContext context, int index) {
-                    return Card(
-                      child: ListTile(
-                        onTap: () {
-                          setState(() {
-                            spotifyMetadata = avaliableTracks[index];
-                          });
-                          _writeSpotifyMetadataToFile();
-                        },
-                        title: Text(
-                            "${avaliableTracks[index]["name"]} - ${avaliableTracks[index]["artist"]}"),
-                        subtitle: Text(
-                            "${avaliableTracks[index]["album"]} (${avaliableTracks[index]["year"]})"),
-                        leading: Image.network(avaliableTracks[index]["image"]),
-                      ),
-                    );
-                  },
-                ),
+                Expanded(
+                  child: ListView.builder(
+                    scrollDirection: Axis.vertical,
+                    shrinkWrap: true,
+                    itemCount: avaliableTracks.length,
+                    itemBuilder: (BuildContext context, int index) {
+                      return Card(
+                        child: ListTile(
+                          onTap: () {
+                            setState(() {
+                              spotifyMetadata = avaliableTracks[index];
+                            });
+                            _writeSpotifyMetadataToFile();
+                          },
+                          title: Text(
+                              "${avaliableTracks[index]["name"]} - ${avaliableTracks[index]["artist"]}"),
+                          subtitle: Text(
+                              "${avaliableTracks[index]["album"]} (${avaliableTracks[index]["year"]})"),
+                          leading:
+                              Image.network(avaliableTracks[index]["image"]),
+                        ),
+                      );
+                    },
+                  ),
+                )
               ],
             )),
         floatingActionButton: FloatingActionButton(
