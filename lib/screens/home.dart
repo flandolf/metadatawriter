@@ -45,7 +45,6 @@ class _HomeScreenState extends State<HomeScreen> {
         });
       });
     }
-    setState(() {});
   }
 
   void _save() async {
@@ -323,16 +322,6 @@ class _HomeScreenState extends State<HomeScreen> {
                         onPressed: _getSpotifyMetadata,
                         child: const Text("Search")),
                   ),
-                ),
-                Card(
-                  child: ListTile(
-                      title: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: <Widget>[
-                      const Text("File Path"),
-                      if (filePath.isNotEmpty) Text(filePath),
-                    ],
-                  )),
                 ),
                 Card(
                   child: ListTile(
